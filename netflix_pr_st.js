@@ -871,8 +871,8 @@
 
             /* ===== BLOCK: CARD VISUAL ===== */
             .card {
-                flex: 0 0 var(--nfx-width) !important;
-                width: var(--nfx-width) !important;
+                //flex: 0 0 var(--nfx-width) !important;
+                //width: var(--nfx-width) !important;
                 height: var(--nfx-height) !important;
                 margin: 0 !important;
                 overflow: visible !important;
