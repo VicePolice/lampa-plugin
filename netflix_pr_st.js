@@ -1232,7 +1232,7 @@
 
         refreshCards();
         ensureSectionTitlesAboveCards(document);
-        ensureMenuSubsectionsVisible(document);
+        //ensureMenuSubsectionsVisible(document);
         applyFullCardLogo(lastFullMovie);
     }
 
@@ -1322,7 +1322,7 @@
         bindFullListener();
         refreshCards();
         ensureSectionTitlesAboveCards(document);
-        ensureMenuSubsectionsVisible(document);
+        //ensureMenuSubsectionsVisible(document);
 
         if (Lampa.Plugin) {
             /* Реєстрація плагіна в списку Extensions */
