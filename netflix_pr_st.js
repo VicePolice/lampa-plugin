@@ -667,14 +667,15 @@
         if (node.classList.contains('card')) processCard(node);
         if (node.classList.contains('items-line')) enableSmoothRowScroll(node);
         if (node.classList.contains('items-line') || isSectionTitleElement(node)) ensureSectionTitlesAboveCards(node);
+		/* 
         if (node.classList.contains('menu') || node.classList.contains('menu__list') || node.classList.contains('menu__item')) {
             ensureMenuSubsectionsVisible(node);
         }
-
+		*/
         if (node.classList.contains('full-start-new__title') || node.classList.contains('full-start__title')) {
             applyFullCardLogo(lastFullMovie);
         }
-
+		
         var cards = node.querySelectorAll('.card');
         for (var i = 0; i < cards.length; i++) processCard(cards[i]);
 
@@ -684,7 +685,7 @@
             ensureSectionTitlesAboveCards(rows[j]);
         }
 
-        if (node.querySelector('.menu__item')) ensureMenuSubsectionsVisible(node);
+        //if (node.querySelector('.menu__item')) ensureMenuSubsectionsVisible(node);
         if (node.querySelector(SECTION_TITLE_SELECTORS) || node.querySelector('.items-line')) ensureSectionTitlesAboveCards(node);
         if (node.querySelector('.full-start-new__title, .full-start__title')) applyFullCardLogo(lastFullMovie);
     }
