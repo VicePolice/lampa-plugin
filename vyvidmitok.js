@@ -1,6 +1,6 @@
 /**
  * Likhtar Marks Only — плагін (Likhtar Team).
- * Вивід міток (якість, озвучка, рейтинг) на постери ТА в повну картку фільму/серіалу.
+ * Залишено ТІЛЬКИ вивід міток (якість, озвучка, рейтинг) на постери та сторінку опису.
  */
 (function () {
     'use strict';
@@ -202,23 +202,23 @@
             });
         }
 
-        // =============================================================
-        // ІНЖЕКТ МІТОК В ПОВНУ КАРТКУ (СТОРІНКА ФІЛЬМУ)
-        // =============================================================
+        function createBadge(cssClass, label) {
+            var badge = document.createElement('div');
+            badge.classList.add('card__mark');
+            badge.classList.add('card__mark--' + cssClass);
+            badge.textContent = label;
+            return badge;
+        }
+
         function injectFullCardMarks(movie, renderEl) {
             if (!movie || !movie.id || !renderEl) return;
             var $render = $(renderEl);
+            var rateLine = $render.find('.full-start-new__rate-line').first();
+            if (!rateLine.length) return;
+            if (rateLine.find('.jacred-info-marks-v2').length) return;
             
-            // Шукаємо блок тегів, де Lampa виводить "13+", "Випущено", TMDB рейтинг
-            var tagsContainer = $render.find('.full-start-new__tags, .full-start__tags, .info__tags').first();
-            if (!tagsContainer.length) return;
-            
-            // Уникаємо дублювання
-            if (tagsContainer.find('.likhtar-full-tags').length) return;
-            
-            // Створюємо свій контейнер і додаємо його на початок блоку тегів
-            var marksContainer = $('<div class="likhtar-full-tags" style="display:inline-flex; gap:0.4em; margin-right:0.4em;"></div>');
-            tagsContainer.prepend(marksContainer);
+            var marksContainer = $('<div class="jacred-info-marks-v2"></div>');
+            rateLine.prepend(marksContainer);
             
             getBestJacred(movie, function (data) {
                 if (data && !data.empty) {
@@ -227,59 +227,26 @@
             });
         }
 
-        function renderInfoRowBadges(container, data) {
-            container.empty();
-            // Нативний клас Лампи для тегів (створює таку ж саму рамочку і стиль)
-            var tagClass = 'full-start__pg';
-
-            if (data.ukr && Lampa.Storage.get('likhtar_badge_ua', true)) {
-                container.append($('<div class="'+tagClass+'">UA+</div>'));
-            }
-            if (data.pol && Lampa.Storage.get('likhtar_badge_pl', true)) {
-                container.append($('<div class="'+tagClass+'">PL</div>'));
-            }
-            if (data.eng && Lampa.Storage.get('likhtar_badge_en', true)) {
-                container.append($('<div class="'+tagClass+'">EN</div>'));
-            }
-
-            if (data.resolution && data.resolution !== 'SD') {
-                var resText = data.resolution === 'FHD' ? '1080p' : (data.resolution === 'HD' ? '720p' : data.resolution);
-                if ((data.resolution === '4K' && Lampa.Storage.get('likhtar_badge_4k', true)) || 
-                    ((data.resolution === 'FHD' || data.resolution === 'HD') && Lampa.Storage.get('likhtar_badge_fhd', true))) {
-                    container.append($('<div class="'+tagClass+'">' + resText + '</div>'));
-                }
-            }
-
-            if (data.hdr && Lampa.Storage.get('likhtar_badge_hdr', true)) {
-                var hdrText = data.dolbyVision ? 'Dolby Vision' : 'HDR';
-                container.append($('<div class="'+tagClass+'">' + hdrText + '</div>'));
-            }
-        }
-
         function initFullCardMarks() {
             if (!Lampa.Listener || !Lampa.Listener.follow) return;
-            
-            // Відловлюємо подію побудови (build) повної сторінки
             Lampa.Listener.follow('full', function (e) {
-                if (e.type === 'build' && e.object && e.object.html) {
-                    injectFullCardMarks(e.data.movie, e.object.html);
-                }
+                if (e.type !== 'complite') return;
+                var movie = e.data && e.data.movie;
+                var renderEl = e.object && e.object.activity && e.object.activity.render && e.object.activity.render();
+                injectFullCardMarks(movie, renderEl);
             });
 
-            // На випадок, якщо користувач оновив сторінку, і картка вже відкрита
             setTimeout(function () {
                 try {
                     var act = Lampa.Activity && Lampa.Activity.active && Lampa.Activity.active();
-                    if (act && act.component === 'full' && act.activity && act.activity.render) {
-                        injectFullCardMarks(act.card || act.movie, act.activity.render());
-                    }
+                    if (!act || act.component !== 'full') return;
+                    var movie = act.card || act.movie;
+                    var renderEl = act.activity && act.activity.render && act.activity.render();
+                    injectFullCardMarks(movie, renderEl);
                 } catch (err) { }
-            }, 500);
+            }, 300);
         }
 
-        // =============================================================
-        // ІНЖЕКТ МІТОК НА ПОСТЕРИ (ГОЛОВНА ТА КАТАЛОГИ)
-        // =============================================================
         function processCards() {
             $('.card:not(.jacred-mark-processed-v2)').each(function () {
                 var card = $(this);
@@ -298,6 +265,32 @@
             });
             observer.observe(document.body, { childList: true, subtree: true });
             processCards();
+        }
+
+        function renderInfoRowBadges(container, data) {
+            container.empty();
+
+            if (data.ukr) {
+                var uaTag = $('<div class="full-start__pg"></div>');
+                uaTag.text('UA+');
+                container.append(uaTag);
+            }
+
+            if (data.resolution && data.resolution !== 'SD') {
+                var resText = data.resolution;
+                if (resText === 'FHD') resText = '1080p';
+                else if (resText === 'HD') resText = '720p';
+
+                var qualityTag = $('<div class="full-start__pg"></div>');
+                qualityTag.text(resText);
+                container.append(qualityTag);
+            }
+
+            if (data.hdr) {
+                var hdrTag = $('<div class="full-start__pg"></div>');
+                hdrTag.text(data.dolbyVision ? 'Dolby Vision' : 'HDR');
+                container.append(hdrTag);
+            }
         }
 
         var _uafixCache = {};
@@ -323,16 +316,9 @@
             });
         }
 
-        function createBadge(cssClass, label) {
-            var badge = document.createElement('div');
-            badge.classList.add('card__mark');
-            badge.classList.add('card__mark--' + cssClass);
-            badge.textContent = label;
-            return badge;
-        }
-
         function addMarksToContainer(element, movie, viewSelector) {
             var containerParent = viewSelector ? element.find(viewSelector) : element;
+            // Якщо не знайшли вказаний селектор, використовуємо сам елемент
             if (!containerParent.length) containerParent = element;
 
             var marksContainer = containerParent.find('.card-marks');
@@ -379,6 +365,7 @@
             }
             if (data.hdr && Lampa.Storage.get('likhtar_badge_hdr', true)) container.append(createBadge('hdr', 'HDR'));
             
+            // Рейтинг
             if (movie) {
                 var rating = parseFloat(movie.imdb_rating || movie.kp_rating || movie.vote_average || 0);
                 if (rating > 0) {
@@ -392,12 +379,12 @@
 
         var style = document.createElement('style');
         style.innerHTML = `
-            /* ====== Вирівнюємо нативну TV мітку ====== */
+            /* ====== Вирівнюємо нативну TV мітку з нашими ====== */
             .card .card__type {
                 left: -0.2em !important;
             }
 
-            /* ====== Мітки на постерах ====== */
+            /* ====== Card marks — зліва, стовпчиком під TV ====== */
             .card-marks {
                 position: absolute;
                 top: 2.7em;
@@ -408,6 +395,7 @@
                 z-index: 10;
                 pointer-events: none;
             }
+            /* Якщо немає TV мітки — піднімаємо на її позицію */
             .card:not(.card--tv):not(.card--movie) .card-marks,
             .card--movie .card-marks {
                 top: 1.4em;
@@ -437,7 +425,17 @@
             .card__mark--rating { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #ffd700; border-color: rgba(255,215,0,0.3); font-size: 0.75em; white-space: nowrap; }
             .card__mark--rating .mark-star { margin-right: 0.15em; font-size: 0.9em; }
 
+            /* Ховаємо нативну оцінку, коли є наші мітки */
             .card.jacred-mark-processed-v2 .card__vote { display: none !important; }
+            
+            /* ====== Full card (info row) marks ====== */
+            .jacred-info-marks-v2 {
+                display: flex;
+                flex-direction: row;
+                gap: 0.5em;
+                margin-right: 1em;
+                align-items: center;
+            }
 
             @keyframes mark-fade-in { to { opacity: 1; } }
         `;
