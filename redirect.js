@@ -45,9 +45,9 @@
                     type: 'select', 
                     values: {
                         '': 'Не вибрано',
-                        'http://lampaua.mooo.com/': 'Lampa UA (HTTPS)',
-                        'https://golampaua.mooo.com/': 'Go Lampa UA (HTTPS)',
-                        'http://lampa.mx/': 'Lampa MX (HTTP)'
+                        'http://lampaua.mooo.com/': 'Lampa UA',
+                        'https://golampaua.mooo.com/': 'Go Lampa UA',
+                        'http://lampa.mx/': 'Lampa MX'
                     },
                     default: 'http://lampaua.mooo.com/'
                 },
