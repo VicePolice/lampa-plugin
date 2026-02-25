@@ -1,6 +1,8 @@
 /**
  * Likhtar Marks Only — плагін (Likhtar Team).
- * Залишено ТІЛЬКИ вивід міток (якість, озвучка, рейтинг) на постери та сторінку опису.
+ * Залишено вивід міток (якість, озвучка (UA, EN), рейтинг) на постери та сторінку опису.
+ * Вилучено польську озвучку.
+ * Оптимізовано: миттєвий рендер збережених міток, додано Storage кеш для UaFix, прибрано анімацію.
  */
 (function () {
     'use strict';
@@ -30,7 +32,6 @@
 
         Lampa.SettingsApi.addParam({ component: 'likhtar_marks', param: { name: 'likhtar_badge_ua', type: 'trigger', default: true }, field: { name: 'Українська озвучка (UA)' } });
         Lampa.SettingsApi.addParam({ component: 'likhtar_marks', param: { name: 'likhtar_badge_en', type: 'trigger', default: true }, field: { name: 'Англійська озвучка (EN)' } });
-        Lampa.SettingsApi.addParam({ component: 'likhtar_marks', param: { name: 'likhtar_badge_pl', type: 'trigger', default: true }, field: { name: 'Польська озвучка (PL)' } });
         Lampa.SettingsApi.addParam({ component: 'likhtar_marks', param: { name: 'likhtar_badge_4k', type: 'trigger', default: true }, field: { name: 'Якість 4K' } });
         Lampa.SettingsApi.addParam({ component: 'likhtar_marks', param: { name: 'likhtar_badge_fhd', type: 'trigger', default: true }, field: { name: 'Якість FHD/HD' } });
         Lampa.SettingsApi.addParam({ component: 'likhtar_marks', param: { name: 'likhtar_badge_hdr', type: 'trigger', default: true }, field: { name: 'HDR / Dolby Vision' } });
@@ -135,11 +136,8 @@
 
                 try {
                     var parsed;
-                    try {
-                        parsed = JSON.parse(data);
-                    } catch (e) {
-                        callback(null);
-                        return;
+                    try { parsed = JSON.parse(data); } catch (e) {
+                        callback(null); return;
                     }
 
                     if (parsed.contents) {
@@ -161,8 +159,8 @@
 
                     results.forEach(function (item) {
                         var t = (item.title || '').toLowerCase();
-
                         var currentRes = 'SD';
+                        
                         if (t.indexOf('4k') >= 0 || t.indexOf('2160') >= 0 || t.indexOf('uhd') >= 0) currentRes = '4K';
                         else if (t.indexOf('2k') >= 0 || t.indexOf('1440') >= 0) currentRes = '2K';
                         else if (t.indexOf('1080') >= 0 || t.indexOf('fhd') >= 0 || t.indexOf('full hd') >= 0) currentRes = 'FHD';
@@ -171,21 +169,10 @@
                         if (resOrder.indexOf(currentRes) > resOrder.indexOf(best.resolution)) {
                             best.resolution = currentRes;
                         }
-
-                        if (t.indexOf('ukr') >= 0 || t.indexOf('укр') >= 0 || t.indexOf('ua') >= 0 || t.indexOf('ukrainian') >= 0) {
-                            best.ukr = true;
-                        }
-
-                        if (t.indexOf('eng') >= 0 || t.indexOf('english') >= 0 || t.indexOf('multi') >= 0) {
-                            best.eng = true;
-                        }
-
-                        if (t.indexOf('dolby vision') >= 0 || t.indexOf('dolbyvision') >= 0) {
-                            best.hdr = true;
-                            best.dolbyVision = true;
-                        } else if (t.indexOf('hdr') >= 0) {
-                            best.hdr = true;
-                        }
+                        if (t.indexOf('ukr') >= 0 || t.indexOf('укр') >= 0 || t.indexOf('ua') >= 0 || t.indexOf('ukrainian') >= 0) best.ukr = true;
+                        if (t.indexOf('eng') >= 0 || t.indexOf('english') >= 0 || t.indexOf('multi') >= 0) best.eng = true;
+                        if (t.indexOf('dolby vision') >= 0 || t.indexOf('dolbyvision') >= 0) { best.hdr = true; best.dolbyVision = true; } 
+                        else if (t.indexOf('hdr') >= 0) best.hdr = true;
                     });
 
                     if (card.original_language === 'uk') best.ukr = true;
@@ -196,9 +183,7 @@
                     try { Lampa.Storage.set(cacheKey, best); } catch (e) { }
                     callback(best);
 
-                } catch (e) {
-                    callback(null);
-                }
+                } catch (e) { callback(null); }
             });
         }
 
@@ -251,7 +236,6 @@
             $('.card:not(.jacred-mark-processed-v2)').each(function () {
                 var card = $(this);
                 card.addClass('jacred-mark-processed-v2');
-
                 var movie = card[0].heroMovieData || card.data('item') || (card[0] && (card[0].card_data || card[0].item)) || null;
                 if (movie && movie.id && !movie.size) {
                     addMarksToContainer(card, movie, '.card__view');
@@ -260,32 +244,26 @@
         }
 
         function observeCardRows() {
-            var observer = new MutationObserver(function () {
-                processCards();
-            });
+            var observer = new MutationObserver(function () { processCards(); });
             observer.observe(document.body, { childList: true, subtree: true });
             processCards();
         }
 
         function renderInfoRowBadges(container, data) {
             container.empty();
-
             if (data.ukr) {
                 var uaTag = $('<div class="full-start__pg"></div>');
                 uaTag.text('UA+');
                 container.append(uaTag);
             }
-
             if (data.resolution && data.resolution !== 'SD') {
                 var resText = data.resolution;
                 if (resText === 'FHD') resText = '1080p';
                 else if (resText === 'HD') resText = '720p';
-
                 var qualityTag = $('<div class="full-start__pg"></div>');
                 qualityTag.text(resText);
                 container.append(qualityTag);
             }
-
             if (data.hdr) {
                 var hdrTag = $('<div class="full-start__pg"></div>');
                 hdrTag.text(data.dolbyVision ? 'Dolby Vision' : 'HDR');
@@ -308,17 +286,29 @@
 
         function checkUafix(movie, callback) {
             if (!movie || !movie.id) return callback(false);
-            var key = 'uafix_' + movie.id;
+            var key = 'uafix_v2_' + movie.id;
+            
+            // 1. Швидкий кеш в ОЗП
             if (_uafixCache[key] !== undefined) return callback(_uafixCache[key]);
+            
+            // 2. Постійний кеш (Storage)
+            var storageVal = Lampa.Storage.get(key, '');
+            if (storageVal !== '') {
+                var isFound = (storageVal === 'true' || storageVal === true);
+                _uafixCache[key] = isFound;
+                return callback(isFound);
+            }
+
+            // 3. Якщо ніде немає, йдемо в мережу
             checkUafixDirect(movie, function (found) {
                 _uafixCache[key] = found;
+                try { Lampa.Storage.set(key, found ? 'true' : 'false'); } catch (e) {}
                 callback(found);
             });
         }
 
         function addMarksToContainer(element, movie, viewSelector) {
             var containerParent = viewSelector ? element.find(viewSelector) : element;
-            // Якщо не знайшли вказаний селектор, використовуємо сам елемент
             if (!containerParent.length) containerParent = element;
 
             var marksContainer = containerParent.find('.card-marks');
@@ -330,7 +320,6 @@
             if (movie.has_ua !== undefined || movie.quality !== undefined) {
                 var staticData = {
                     ukr: movie.has_ua === true,
-                    pol: movie.has_pl === true,
                     resolution: movie.quality || 'SD',
                     hdr: movie.is_hdr === true,
                     eng: false
@@ -354,7 +343,6 @@
         function renderBadges(container, data, movie) {
             container.empty();
             if (data.ukr && Lampa.Storage.get('likhtar_badge_ua', true)) container.append(createBadge('ua', 'UA'));
-            if (data.pol && Lampa.Storage.get('likhtar_badge_pl', true)) container.append(createBadge('pl', 'PL'));
             if (data.eng && Lampa.Storage.get('likhtar_badge_en', true)) container.append(createBadge('en', 'EN'));
             
             if (data.resolution && data.resolution !== 'SD') {
@@ -365,7 +353,6 @@
             }
             if (data.hdr && Lampa.Storage.get('likhtar_badge_hdr', true)) container.append(createBadge('hdr', 'HDR'));
             
-            // Рейтинг
             if (movie) {
                 var rating = parseFloat(movie.imdb_rating || movie.kp_rating || movie.vote_average || 0);
                 if (rating > 0) {
@@ -379,12 +366,8 @@
 
         var style = document.createElement('style');
         style.innerHTML = `
-            /* ====== Вирівнюємо нативну TV мітку з нашими ====== */
-            .card .card__type {
-                left: -0.2em !important;
-            }
+            .card .card__type { left: -0.2em !important; }
 
-            /* ====== Card marks — зліва, стовпчиком під TV ====== */
             .card-marks {
                 position: absolute;
                 top: 2.7em;
@@ -395,7 +378,6 @@
                 z-index: 10;
                 pointer-events: none;
             }
-            /* Якщо немає TV мітки — піднімаємо на її позицію */
             .card:not(.card--tv):not(.card--movie) .card-marks,
             .card--movie .card-marks {
                 top: 1.4em;
@@ -411,8 +393,6 @@
                 align-items: center;
                 justify-content: center;
                 align-self: flex-start;
-                opacity: 0;
-                animation: mark-fade-in 0.35s ease-out forwards;
                 border: 1px solid rgba(255,255,255,0.15);
             }
             .card__mark--ua  { background: linear-gradient(135deg, #1565c0, #42a5f5); color: #fff; border-color: rgba(66,165,245,0.4); }
@@ -420,15 +400,12 @@
             .card__mark--fhd { background: linear-gradient(135deg, #4a148c, #ab47bc); color: #fff; border-color: rgba(171,71,188,0.4); }
             .card__mark--hd  { background: linear-gradient(135deg, #1b5e20, #66bb6a); color: #fff; border-color: rgba(102,187,106,0.4); }
             .card__mark--en  { background: linear-gradient(135deg, #37474f, #78909c); color: #fff; border-color: rgba(120,144,156,0.4); }
-            .card__mark--pl  { background: linear-gradient(135deg, #c41e3a, #ff4d4d); color: #fff; border-color: rgba(255,77,77,0.4); }
             .card__mark--hdr { background: linear-gradient(135deg, #f57f17, #ffeb3b); color: #000; border-color: rgba(255,235,59,0.4); }
             .card__mark--rating { background: linear-gradient(135deg, #1a1a2e, #16213e); color: #ffd700; border-color: rgba(255,215,0,0.3); font-size: 0.75em; white-space: nowrap; }
             .card__mark--rating .mark-star { margin-right: 0.15em; font-size: 0.9em; }
 
-            /* Ховаємо нативну оцінку, коли є наші мітки */
             .card.jacred-mark-processed-v2 .card__vote { display: none !important; }
             
-            /* ====== Full card (info row) marks ====== */
             .jacred-info-marks-v2 {
                 display: flex;
                 flex-direction: row;
@@ -436,8 +413,6 @@
                 margin-right: 1em;
                 align-items: center;
             }
-
-            @keyframes mark-fade-in { to { opacity: 1; } }
         `;
         document.head.appendChild(style);
 
@@ -445,9 +420,6 @@
         observeCardRows();
     }
 
-    // =================================================================
-    // INIT FUNCTION
-    // =================================================================
     function init() {
         setupMarksSettings();
         initMarksJacRed();
