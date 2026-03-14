@@ -60,11 +60,11 @@
                     type: 'select', 
                     values: {
                         '': 'Не вибрано',
-                        'http://lampaua.mooo.com/': 'Lampa UA',
+                        'http://192.168.50.8:18118/': 'My AlcoPac',
                         'https://golampaua.mooo.com/': 'Go Lampa UA',
                         'http://lampa.mx/': 'Lampa MX'
                     },
-                    default: 'http://lampaua.mooo.com/'
+                    default: 'http://192.168.50.8:18118/'
                 },
                 field: {
                     name: 'Адреса сервера',
